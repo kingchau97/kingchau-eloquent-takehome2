@@ -272,7 +272,7 @@ export default function App() {
 
   const [isFinancialEditing, setIsFinancialEditing] = useState(false);
 
-  const pageSize = 10;
+  const pageSize = 9;
 
   const selectedClient =
     clients.find((client) => client.id === selectedClientId) ?? null;
@@ -303,8 +303,29 @@ export default function App() {
      ? ((enterpriseRevenueTotal / totalSpent) * 100).toFixed(1)
      : "0.0";
    */
-  //replacing enterprise revenue as a constant because I reverse engineering and realized the number doesnt change even I changed either life time spending or transactions.
-    const enterpriseRevenue = "95.5";
+/*
+  Reference-matching logic:
+  - uses CURRENT segment selection from clients
+  - uses ORIGINAL totalSpent from initialClients
+  So:
+  - changing segment updates Enterprise Revenue
+  - changing edited totalSpent does NOT update Enterprise Revenue
+*/
+const enterpriseRevenueTotal = clients.reduce((sum, client) => {
+  if (client.segment !== "Enterprise") return sum;
+
+  const originalClient = initialClients.find((item) => item.id === client.id);
+  return sum + (originalClient?.totalSpent ?? client.totalSpent);
+}, 0);
+
+const initialTotalSpent = initialClients.reduce(
+  (sum, client) => sum + client.totalSpent,
+  0
+);
+
+const enterpriseRevenue = initialTotalSpent
+  ? ((enterpriseRevenueTotal / initialTotalSpent) * 100).toFixed(1)
+  : "0.0";
 
 
     //if segment is enterprise or sme, and if status is not inactive and last active day > 60 then return numnber of churn risk
@@ -380,7 +401,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f4ee] text-slate-900">
+    <div className="scale-[0.92] origin-top-left w-[108.7%]">
       <div className="flex min-h-screen">
         <aside className="sticky top-0 h-screen w-[320px] shrink-0 border-r border-[#e7e2d8] bg-[#f5f2eb] px-5 py-8">
           <div className="mb-8 flex items-center gap-3">
@@ -421,11 +442,11 @@ export default function App() {
         <main className="flex-1 px-8 py-10">
           {!selectedClient ? (
             <>
-              <h1 className="mb-8 text-[35px] font-bold tracking-[-0.02em]">
+              <h1 className="mb-7 text-[30px] font-bold tracking-[-0.02em]">
                 Eloquent Case Study
               </h1>
 
-              <h2 className="mb-5 text-[18px] font-semibold">Client Entities</h2>
+              <h2 className="mb-5 text-[20px] font-semibold">Client Entities</h2>
 
               <div className="overflow-hidden rounded-2xl border border-[#e7e2d8] bg-white">
                 <div className="grid grid-cols-[2.1fr_1.4fr_1.4fr_1.5fr_1.4fr_1.2fr_1.2fr_40px] border-b border-[#ece7de] bg-[#faf8f3] px-6 py-5 text-[15px] font-semibold text-slate-600">

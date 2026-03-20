@@ -1,14 +1,19 @@
 # 📊 Eloquent Case Study – Client Dashboard
 
-This project is a full frontend implementation of a client dashboard, built to replicate a reference interface with high visual and functional fidelity.
+This project replicates the reference interface with a focus on:
 
-It includes dynamic KPI calculations, editable client records, and multi-page navigation consistent with the original design.
+- Pixel-perfect UI fidelity
+- Accurate KPI calculations
+- Correct data flow between table and detail view
+- Matching **behavior**, not just visuals
+
+The goal is to reverse-engineer and reproduce the reference application as closely as possible, including non-obvious logic and edge cases.
 
 ---
 
 ## 🌐 Live Demo
 
-👉 [https://your-project.vercel.app  ](https://kingchau-eloquent-takehome2.vercel.app)
+👉 https://kingchau-eloquent-takehome2.vercel.app
 
 ---
 
@@ -61,29 +66,100 @@ npm run preview
 
 ---
 
-## ✨ Features
+## 🧠 Key Implementation Details
 
-- 📈 KPI dashboard (revenue, churn risk, etc.)  
-- 🧾 Editable detail panel for first 5 clients  
-- 🔄 Real-time KPI updates after edits  
-- 📅 Date picker for last active field  
-- 🔢 Increment/decrement controls for numeric inputs  
-- 🚫 Status field is non-editable  
-- 📊 Accurate replication of reference UI and behavior  
+### 1. Frontend-Only State (No Persistence)
+
+All data is stored in React state:
+
+```ts
+const [clients, setClients] = useState(initialClients);
+```
+
+- No backend
+- No localStorage / sessionStorage
+
+Result:
+- All edits are temporary  
+- Browser refresh resets data to default  
+
+This matches the reference behavior exactly.
 
 ---
 
-## 🧠 Key Logic
+### 2. KPI Calculations
 
-### Churn Risk Calculation
-- Applies only to **Enterprise** and **SME** segments  
-- Triggered when **Last Active > 60 days**  
-- **Inactive clients are excluded** from churn risk  
+#### Total Spend
 
-### KPI Updates
-- All KPIs dynamically update after saving changes  
-- Changes propagate across dashboard and detail views  
+Dynamically calculated from current state:
 
+```ts
+const totalSpent = clients.reduce(
+  (sum, client) => sum + client.totalSpent,
+  0
+);
+```
+
+---
+
+### 3. Enterprise Revenue (Reverse-Engineered Behavior)
+
+Enterprise Revenue does **not behave like a typical dynamic KPI**.
+
+Observed behavior from reference:
+- Updates when segment changes to "Enterprise"
+- Does NOT update when total spend changes
+- Resets on refresh
+
+Implementation:
+
+- Uses current segment values from `clients`
+- Uses original totalSpent values from `initialClients`
+
+```ts
+const enterpriseRevenueTotal = clients.reduce((sum, client) => {
+  if (client.segment !== "Enterprise") return sum;
+
+  const originalClient = initialClients.find(
+    (item) => item.id === client.id
+  );
+
+  return sum + (originalClient?.totalSpent ?? client.totalSpent);
+}, 0);
+
+const initialTotalSpent = initialClients.reduce(
+  (sum, client) => sum + client.totalSpent,
+  0
+);
+
+const enterpriseRevenue = initialTotalSpent
+  ? ((enterpriseRevenueTotal / initialTotalSpent) * 100).toFixed(1)
+  : "0.0";
+```
+
+
+---
+
+### 4. Churn Risk Calculation
+
+Churn Risk represents the number of at-risk clients.
+
+A client is considered at risk if:
+
+- Segment is Enterprise or SME
+- Status is Active
+- Days since last activity is greater than 60 days
+
+```ts
+const churnRisk = clients.filter((client) => {
+  const isHighValue =
+    client.segment === "Enterprise" || client.segment === "SME";
+  const isActive = client.status === "Active";
+  const daysSinceLastActive = getDaysSince(client.lastActive);
+
+  return isHighValue && isActive && daysSinceLastActive > 60;
+}).length;
+```
 ---
 
 ## 🔍 Notes for Reviewers
